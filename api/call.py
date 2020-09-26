@@ -26,7 +26,7 @@ def root():
 @route('/upload', method='POST')
 @enable_cors
 def do_upload():
-    upload = request.files.get('upload')
+    upload = request.files.get('filename')
     name, ext = os.path.splitext(upload.filename)
     if ext not in ('.html'):
         return "File extension not allowed."
@@ -38,7 +38,7 @@ def do_upload():
     timing = int(time.time())
     file_path = "{path}{file}_{time}{ext}".format(path=save_path, file=upload.name,  ext=ext, time=timing)
     upload.save(file_path)
-    return "File successfully saved to {0}".format(file_path)
+    return parse.list_maker(file_path)
 
 
 @get('/call')
