@@ -1,44 +1,29 @@
 from bottle import request, response, static_file
 from bottle import get, route
-from api.fn import parse
+from api.fn import parse, modify
+import json
 import os
 import time
-
-
-def enable_cors(fn):
-    def _enable_cors(*args, **kwargs):
-        # set CORS headers
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, OPTIONS'
-        response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With, X-CSRF-Token'
-
-        if request.method != 'OPTIONS':
-            # actual request; reply with the actual response
-            return fn(*args, **kwargs)
-
-    return _enable_cors
 
 
 @route('/')
 def root():
     return static_file('test.html', root='.')
 
+
 @route('/upload', method='POST')
-@enable_cors
 def do_upload():
     upload = request.files.get('filename')
-    name, ext = os.path.splitext(upload.filename)
-    if ext not in ('.html'):
-        return "File extension not allowed."
+    # name, ext = os.path.splitext(upload.filename)
 
     save_path = "./tmp/"
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
     timing = int(time.time())
-    file_path = "{path}{file}_{time}{ext}".format(path=save_path, file=upload.name,  ext=ext, time=timing)
+    file_path = "{path}{time}_{filename}".format(path=save_path, time=timing, filename=upload.filename)
     upload.save(file_path)
-    return parse.list_maker(file_path)
+    return parse.list_maker(file_path), file_path
 
 
 @get('/call')
@@ -47,4 +32,20 @@ def listing_handler():
 
     response.headers['Content-Type'] = 'application/json'
     response.headers['Cache-Control'] = 'no-cache'
-    return parse.list_maker('api/fn/index.html')
+    return parse.list_maker('index.html')
+
+
+@route('/download/<filename:path>')
+def download(filename):
+    return static_file(filename, root='/path/to/static/files', download=filename)
+
+
+@get('/modify', method='POST')
+def modify(filename):
+    '''Modify index.html with selected parameters'''
+
+    response.headers['Content-Type'] = 'application/json'
+    postdata = request.body.read()
+
+    res = modify(postdata, filename)
+    return {"success": True}, res
